@@ -5,19 +5,7 @@
 
 ---
 
-## Table of Contents
 
-1. [Objective](#objective)
-2. [Environment](#environment)
-3. [Step 1 — Install Frida and Objection](#step-1--install-frida-and-objection)
-4. [Step 2 — Deploy frida-server on the Emulator](#step-2--deploy-frida-server-on-the-emulator)
-5. [Step 3 — Configure Proxy and Install CA](#step-3--configure-proxy-and-install-ca)
-6. [Step 4 — Launch Objection and Disable SSL Pinning](#step-4--launch-objection-and-disable-ssl-pinning)
-7. [Step 5 — Validate Traffic Interception](#step-5--validate-traffic-interception)
-8. [How Objection Works](#how-objection-works)
-9. [Deliverables Summary](#deliverables-summary)
-
----
 
 ## Objective
 
@@ -53,6 +41,7 @@ Install pipx to isolate the tooling environment, then install Objection (which p
 pip install --user pipx
 python -m pipx ensurepath
 ```
+<img width="1709" height="314" alt="Screenshot 2026-05-18 094643" src="https://github.com/user-attachments/assets/9eb86107-4bbb-492b-b1ca-90c0d02ac84d" />
 
 Close and reopen the terminal after `ensurepath`, then:
 
@@ -72,6 +61,8 @@ frida --version
 python -c "import frida; print(frida.__version__)"
 -> 17.9.1
 ```
+<img width="1229" height="108" alt="image" src="https://github.com/user-attachments/assets/a7d2d881-cf1c-480f-a58d-d12f22ebb979" />
+
 
 Objection does not expose a `--version` flag. Its version (1.12.4) is shown in the banner at launch.
 
@@ -99,24 +90,17 @@ adb shell getprop ro.product.cpu.abi
 ```
 x86
 ```
+<img width="920" height="178" alt="image" src="https://github.com/user-attachments/assets/73b974fd-b1ed-4e95-a6f7-e7fa05d36576" />
 
-### 2.2 Download the matching frida-server binary
 
-Go to [https://github.com/frida/frida/releases/tag/17.9.1](https://github.com/frida/frida/releases/tag/17.9.1) and download:
-
-```
-frida-server-17.9.1-android-x86.xz
-```
-
-Extract with 7-Zip and rename the binary to `frida-server`.
-
-### 2.3 Push and launch frida-server
+### 2.2 Push and launch frida-server
 
 ```bash
 adb push frida-server /data/local/tmp/
 adb shell chmod 755 /data/local/tmp/frida-server
 adb shell "/data/local/tmp/frida-server &"
 ```
+<img width="1381" height="32" alt="image" src="https://github.com/user-attachments/assets/454c1abb-1aaa-490b-a5de-516b3e176c6a" />
 
 The last command does not return — this is expected. frida-server is running in the background.
 
@@ -137,6 +121,7 @@ frida-ps -Uai
 13713  YouTube       com.google.android.youtube
   ...
 ```
+<img width="1308" height="672" alt="image" src="https://github.com/user-attachments/assets/b57efc71-adf6-4a9a-a24a-2d4b536d0304" />
 
 The emulator is visible and frida-server is communicating correctly.
 
@@ -159,6 +144,7 @@ adb shell settings put global http_proxy 10.0.2.2:8080
 ### 3.3 Install the Burp CA certificate
 
 Download the Burp CA from `http://127.0.0.1:8080` (click **CA Certificate**), then push and install it:
+<img width="619" height="584" alt="Screenshot 2026-05-17 110949" src="https://github.com/user-attachments/assets/2a946f37-124e-45a3-8b9c-64a35b9c385d" />
 
 ```bash
 adb push cacert.der /data/local/tmp/cert-der.crt
@@ -167,14 +153,10 @@ adb shell am start -n com.android.certinstaller/.CertInstallerMain \
   -t application/x-x509-ca-cert \
   -d file:///data/local/tmp/cert-der.crt
 ```
+<img width="198" height="137" alt="Screenshot 2026-05-17 112037" src="https://github.com/user-attachments/assets/c77314db-58b5-4d32-bcbc-e5d1aa0f940e" />
 
 Give the certificate any name when prompted on the emulator (e.g. `Burp`).
 
-### 3.4 Quick validation
-
-Open Chrome on the emulator and visit any HTTPS site. Requests should appear in **Burp → Proxy → HTTP history**.
-
-> **Why the CA is still needed even with Objection:** Objection neutralizes the app-level certificate verification. The CA is needed so the OS-level TLS stack trusts the proxy certificate and does not throw errors before the app even processes the response.
 
 ---
 
@@ -203,23 +185,8 @@ com.android.chrome on (Android: 11) [usb] #
 
 Each hook line confirms a specific SSL verification function has been overridden in memory.
 
-### Alternative: attach mode
 
-If spawn crashes the app, start the app manually first, then attach:
-
-```bash
-objection -g com.android.chrome explore
-# Once in the console:
-android sslpinning disable
-```
-
-### Useful console commands
-
-```bash
-android sslpinning disable
-android hooking search classes pin
-help android sslpinning
-```
+<img width="1658" height="612" alt="image" src="https://github.com/user-attachments/assets/ebf5539e-8fe9-447b-9c18-1526a89135a9" />
 
 ---
 
@@ -229,15 +196,11 @@ Generate HTTPS traffic by browsing any site in Chrome on the emulator.
 
 In **Burp → Proxy → HTTP history**, HTTPS requests appear in full — headers, cookies, request body — with the TLS column marked, confirming decryption is working.
 
-Example captured traffic:
 
-| Host | Method | Status | Notes |
-|---|---|---|---|
-| `www.google.com` | GET | 200 | Search request, fully decrypted |
-| `clients2.google.com` | POST | 200 | Domain reliability upload |
-| `beacons.gcp.gvt2.com` | POST | 307 | Analytics beacon |
 
 ---
+<img width="1919" height="694" alt="image" src="https://github.com/user-attachments/assets/4a1453eb-53c7-4d1e-be25-a7460dceb01c" />
+
 
 ## How Objection Works
 
